@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict
 import numpy as np
+from config import GPU_DEVICE_ID  # noqa: F401 - applies CUDA_VISIBLE_DEVICES before TensorFlow import
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow import keras

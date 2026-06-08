@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from config import GPU_DEVICE_ID  # noqa: F401 - applies CUDA_VISIBLE_DEVICES before TensorFlow import
 import tensorflow as tf
 
 

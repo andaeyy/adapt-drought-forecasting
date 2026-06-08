@@ -1,5 +1,16 @@
 # ADAPT Drought Forecasting Streamlit App
 
+> [!IMPORTANT]
+> **GPU-only application:** this app will not run on CPU. You must start it on a machine with a working TensorFlow/CUDA GPU stack and you must explicitly choose the system GPU before launching it.
+>
+> Configure the GPU every time before startup:
+>
+> ```bash
+> export DROUGHTAPP_GPU_DEVICE=0
+> ```
+>
+> Replace `0` with the system GPU ID assigned to your job or server session. The app copies this value into `CUDA_VISIBLE_DEVICES` before TensorFlow imports, so TensorFlow only sees that one selected GPU. If `DROUGHTAPP_GPU_DEVICE` is missing, names more than one GPU, or TensorFlow cannot detect the selected GPU, the app exits instead of falling back to CPU.
+
 This repository contains a Streamlit app for running drought forecasts with bundled model artifacts and normalizations on a precomputed model grid.
 
 The app downloads recent NLDAS forcings at runtime through NASA Earthdata using `earthaccess`. Each user must authenticate with their own NASA Earthdata account.
@@ -7,6 +18,7 @@ The app downloads recent NLDAS forcings at runtime through NASA Earthdata using 
 ## Requirements
 
 - Python 3.10 or newer
+- A CUDA-capable system GPU with a TensorFlow-compatible CUDA/cuDNN runtime
 - Git LFS, needed to download the files in `model_artifacts/`
 - A free NASA Earthdata account: <https://urs.earthdata.nasa.gov/users/new>
 
@@ -48,6 +60,14 @@ This stores your Earthdata credentials locally. The repository does not include 
 
 ## Run
 
+Choose the system GPU first:
+
+```bash
+export DROUGHTAPP_GPU_DEVICE=0
+```
+
+Then launch the app:
+
 ```bash
 streamlit run app.py
 ```
@@ -83,6 +103,7 @@ If `model_artifacts/grid/model_grid.npz` is missing, the app can still reconstru
 
 The defaults should work after cloning with Git LFS and logging into Earthdata. These environment variables are available for custom deployments:
 
+- `DROUGHTAPP_GPU_DEVICE`: required system GPU ID, for example `0`. The app sets `CUDA_VISIBLE_DEVICES` from this value and only runs on that selected GPU.
 - `STREAMLIT_MODEL_ARTIFACTS_DIR`: alternate model artifact directory
 - `MODEL_GRID_PATH`: alternate precomputed grid `.npz`
 - `NLDAS_CACHE_DIR`: local cache for Earthdata downloads
@@ -91,6 +112,7 @@ The defaults should work after cloning with Git LFS and logging into Earthdata. 
 Example:
 
 ```bash
+export DROUGHTAPP_GPU_DEVICE=0
 export NLDAS_CACHE_DIR="$PWD/droughtapp_cache"
 streamlit run app.py
 ```
@@ -99,5 +121,5 @@ streamlit run app.py
 
 - If model loading fails, run `git lfs pull` and confirm the files in `model_artifacts/` are not tiny pointer files.
 - If Earthdata download fails, re-run `python -c "import earthaccess; earthaccess.login(persist=True)"`.
-- If TensorFlow is slow or no GPU is available, the app will still run on CPU, but forecasts may take longer.
+- If startup fails with a GPU configuration error, set `DROUGHTAPP_GPU_DEVICE` to the GPU assigned to your session and verify TensorFlow can see it with `python -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"`.
 - If Streamlit starts but the browser cannot connect on a remote server, use `./run.sh` or pass `--server.address 0.0.0.0`.

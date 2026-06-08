@@ -5,6 +5,26 @@ from dataclasses import dataclass
 from typing import Dict, List, Any
 
 
+GPU_ENV_VAR = "DROUGHTAPP_GPU_DEVICE"
+GPU_DEVICE_ID = os.environ.get(GPU_ENV_VAR)
+if GPU_DEVICE_ID is None or not GPU_DEVICE_ID.strip():
+    raise RuntimeError(
+        f"{GPU_ENV_VAR} must be set before starting the app. "
+        "Set it to the system GPU ID to use, for example: "
+        "export DROUGHTAPP_GPU_DEVICE=0"
+    )
+GPU_DEVICE_ID = GPU_DEVICE_ID.strip()
+if "," in GPU_DEVICE_ID:
+    raise RuntimeError(
+        f"{GPU_ENV_VAR} must name exactly one system GPU ID, not a list. "
+        "Example: export DROUGHTAPP_GPU_DEVICE=0"
+    )
+
+# TensorFlow reads CUDA_VISIBLE_DEVICES during import. Keep this assignment in
+# config.py and import config before any TensorFlow import site.
+os.environ["CUDA_VISIBLE_DEVICES"] = GPU_DEVICE_ID
+
+
 @dataclass(frozen=True)
 class TimescaleSpec:
     name: str

@@ -6,6 +6,7 @@ import numpy as np
 
 def enable_tf_gpu_memory_growth():
     try:
+        from config import GPU_DEVICE_ID  # noqa: F401 - applies CUDA_VISIBLE_DEVICES before TensorFlow import
         import tensorflow as tf
 
         for g in tf.config.list_physical_devices("GPU"):
