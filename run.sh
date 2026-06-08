@@ -4,17 +4,37 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
 
-# If you want specific conda env, activate before running.
-# conda activate jupyter_env
+if ! command -v streamlit >/dev/null 2>&1; then
+  if python -c "import streamlit" >/dev/null 2>&1; then
+    STREAMLIT=(python -m streamlit)
+  elif command -v conda >/dev/null 2>&1 && conda env list | awk '{print $1}' | grep -qx jupyter_env; then
+    exec conda run --no-capture-output -n jupyter_env "$0"
+  else
+    echo "streamlit is not installed in the active environment." >&2
+    echo "Activate the app environment or install requirements.txt." >&2
+    exit 127
+  fi
+else
+  STREAMLIT=(streamlit)
+fi
 
 export STREAMLIT_SERVER_HEADLESS=true
 export STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# TensorFlow/GPU runtime config
-: "${DROUGHTAPP_GPU_DEVICE:?Set DROUGHTAPP_GPU_DEVICE to the system GPU ID to use, for example: export DROUGHTAPP_GPU_DEVICE=0}"
-export CUDA_VISIBLE_DEVICES="$DROUGHTAPP_GPU_DEVICE"
+# TensorFlow/GPU runtime config. DROUGHTAPP_GPU_DEVICE wins; otherwise keep the
+# scheduler/runtime CUDA_VISIBLE_DEVICES value; otherwise default to GPU 0.
+if [[ -n "${DROUGHTAPP_GPU_DEVICE:-}" ]]; then
+  export CUDA_VISIBLE_DEVICES="${DROUGHTAPP_GPU_DEVICE%%,*}"
+elif [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
+  export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES%%,*}"
+else
+  export CUDA_VISIBLE_DEVICES=0
+fi
 export TF_CPP_MIN_LOG_LEVEL=2
 export TF_GPU_ALLOCATOR=cuda_malloc_async
 export TF_XLA_FLAGS=--tf_xla_auto_jit=2
 
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+echo "Using CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+"${STREAMLIT[@]}" run app.py \
+  --server.port "${STREAMLIT_PORT:-8501}" \
+  --server.address "${STREAMLIT_ADDRESS:-0.0.0.0}"

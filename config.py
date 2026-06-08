@@ -6,7 +6,6 @@ from typing import Dict, List, Any
 
 
 GPU_ENV_VAR = "DROUGHTAPP_GPU_DEVICE"
-GPU_REQUIRED_ENV_VAR = "DROUGHTAPP_REQUIRE_GPU"
 
 
 def _first_csv_value(value: str | None) -> str | None:
@@ -16,16 +15,8 @@ def _first_csv_value(value: str | None) -> str | None:
     return parts[0] if parts else None
 
 
-def _env_flag_enabled(name: str, default: bool = False) -> bool:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 _requested_gpu = _first_csv_value(os.environ.get(GPU_ENV_VAR))
 _visible_gpu = _first_csv_value(os.environ.get("CUDA_VISIBLE_DEVICES"))
-GPU_REQUIRED = _env_flag_enabled(GPU_REQUIRED_ENV_VAR)
 
 if _requested_gpu is not None:
     GPU_DEVICE_ID = _requested_gpu
@@ -34,13 +25,12 @@ elif _visible_gpu is not None:
     GPU_DEVICE_ID = _visible_gpu
     GPU_CONFIG_SOURCE = "CUDA_VISIBLE_DEVICES"
 else:
-    GPU_DEVICE_ID = None
-    GPU_CONFIG_SOURCE = "auto"
+    GPU_DEVICE_ID = "0"
+    GPU_CONFIG_SOURCE = "default"
 
 # TensorFlow reads CUDA_VISIBLE_DEVICES during import. Keep this assignment in
 # config.py and import config before any TensorFlow import site.
-if GPU_DEVICE_ID is not None:
-    os.environ["CUDA_VISIBLE_DEVICES"] = GPU_DEVICE_ID
+os.environ["CUDA_VISIBLE_DEVICES"] = GPU_DEVICE_ID
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 os.environ.setdefault("TF_GPU_ALLOCATOR", "cuda_malloc_async")
 

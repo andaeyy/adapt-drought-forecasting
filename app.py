@@ -14,7 +14,6 @@ from config import (
     DEFAULT_COPULA_TAU,
     GPU_CONFIG_SOURCE,
     GPU_DEVICE_ID,
-    GPU_REQUIRED,
     TIMESCALES,
 )
 from models import resolve_timescale_model_dir
@@ -159,9 +158,7 @@ def _render_drought_legend_table() -> None:
 
 with st.sidebar:
     st.subheader("Forecast Settings")
-    gpu_label = GPU_DEVICE_ID if GPU_DEVICE_ID is not None else "auto"
-    gpu_mode = "required" if GPU_REQUIRED else "preferred"
-    st.caption(f"GPU: `{gpu_label}` ({GPU_CONFIG_SOURCE}, {gpu_mode})")
+    st.caption(f"GPU: `{GPU_DEVICE_ID}` ({GPU_CONFIG_SOURCE})")
 
     timescale = st.selectbox("Timescale", list(TIMESCALES.keys()), index=0)
     drought_sensitivity = 2.0
