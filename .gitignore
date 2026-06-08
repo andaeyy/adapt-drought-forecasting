@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.ipynb_checkpoints/
+.codex/
+
+.streamlit/secrets.toml
+
+droughtapp_cache/
+NLDAS_Cache/
+*.log
+
+ELM_EVAPOTRANSPIRATION_2000_2019.nc
+ELM_SM_2000-2019.nc
+yearly/
