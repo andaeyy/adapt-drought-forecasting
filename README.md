@@ -1,8 +1,8 @@
 # ADAPT Drought Forecasting Streamlit App
 
-This repository contains a Streamlit app for running ADAPT drought forecasts with bundled model artifacts, model normalizations, and a precomputed model grid.
+This repository contains a Streamlit app for running drought forecasts with bundled model artifacts and normalizations on a precomputed model grid.
 
-The app downloads recent NLDAS forcing data at runtime through NASA Earthdata using `earthaccess`. Each user must authenticate with their own NASA Earthdata account.
+The app downloads recent NLDAS forcings at runtime through NASA Earthdata using `earthaccess`. Each user must authenticate with their own NASA Earthdata account.
 
 ## Requirements
 
