@@ -7,7 +7,14 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 
-from config import DEFAULT_COPULA_TAU, GPU_DEVICE_ID, GPU_ENV_VAR
+from config import (
+    DEFAULT_COPULA_TAU,
+    GPU_CONFIG_SOURCE,
+    GPU_DEVICE_ID,
+    GPU_ENV_VAR,
+    GPU_REQUIRED,
+    GPU_REQUIRED_ENV_VAR,
+)
 
 import tensorflow as tf
 from models import load_models
@@ -20,16 +27,20 @@ from data_earthaccess import (
 from drought_index import drought_from_zscores
 
 
-def _require_tf_gpu() -> str:
+def _select_tf_device() -> str:
     tf.config.set_soft_device_placement(False)
     gpus = tf.config.list_physical_devices("GPU")
-    if not gpus:
+    if gpus:
+        return "/GPU:0"
+    if GPU_REQUIRED:
         raise RuntimeError(
-            "TensorFlow cannot see a GPU. This app only runs on GPU. "
-            f"Set {GPU_ENV_VAR} to a valid system GPU ID before startup "
-            f"(current value: {GPU_DEVICE_ID!r}) and confirm the CUDA/TensorFlow GPU stack is available."
+            "TensorFlow cannot see a GPU, and GPU mode is required. "
+            f"Set {GPU_ENV_VAR} to a valid system GPU ID before startup, or launch inside "
+            f"a session with CUDA_VISIBLE_DEVICES set. Current selection: {GPU_DEVICE_ID!r} "
+            f"from {GPU_CONFIG_SOURCE}. To allow CPU fallback, unset {GPU_REQUIRED_ENV_VAR} "
+            "or set it to 0."
         )
-    return "/GPU:0"
+    return "/CPU:0"
 
 
 def _enable_tf_gpu_memory_growth() -> None:
@@ -116,7 +127,7 @@ def _load_earthaccess_daily_forcing(
 
 def _predict_single(model: tf.keras.Model, x: np.ndarray) -> np.ndarray:
     """Run singular model forecasting window and return 2D forecast field."""
-    with tf.device(_require_tf_gpu()):
+    with tf.device(_select_tf_device()):
         x_tf = tf.convert_to_tensor(x, dtype=tf.float32)
         y = model(x_tf, training=False)
     y = np.asarray(y)
@@ -164,7 +175,7 @@ def _build_sm_pred_feature_window(
         xb_list.append(X_base_norm[s : e + 1])
     xb = np.stack(xb_list, axis=0).astype(np.float32)
 
-    with tf.device(_require_tf_gpu()):
+    with tf.device(_select_tf_device()):
         x_tf = tf.convert_to_tensor(xb, dtype=tf.float32)
         y = sm_model(x_tf, training=False)
     y = np.asarray(y)
@@ -215,7 +226,7 @@ def run_forecast(
 ) -> ForecastResult:
     """Retrieve NLDAS Forcing + run inference +  classification via drought index."""
     _enable_tf_gpu_memory_growth()
-    gpu_device = _require_tf_gpu()
+    tf_device = _select_tf_device()
 
     model_dir = bundle["model_dir"]
     forcing_dir = bundle.get("forcing_dir")
@@ -367,7 +378,8 @@ def run_forecast(
         "tau": float(tau),
         "drought_sensitivity": float(drought_sensitivity),
         "configured_system_gpu": GPU_DEVICE_ID,
-        "tensorflow_device": gpu_device,
+        "gpu_config_source": GPU_CONFIG_SOURCE,
+        "tensorflow_device": tf_device,
         "gpu_devices": [d.name for d in tf.config.list_physical_devices("GPU")],
     }
 

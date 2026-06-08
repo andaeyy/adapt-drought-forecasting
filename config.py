@@ -6,23 +6,43 @@ from typing import Dict, List, Any
 
 
 GPU_ENV_VAR = "DROUGHTAPP_GPU_DEVICE"
-GPU_DEVICE_ID = os.environ.get(GPU_ENV_VAR)
-if GPU_DEVICE_ID is None or not GPU_DEVICE_ID.strip():
-    raise RuntimeError(
-        f"{GPU_ENV_VAR} must be set before starting the app. "
-        "Set it to the system GPU ID to use, for example: "
-        "export DROUGHTAPP_GPU_DEVICE=0"
-    )
-GPU_DEVICE_ID = GPU_DEVICE_ID.strip()
-if "," in GPU_DEVICE_ID:
-    raise RuntimeError(
-        f"{GPU_ENV_VAR} must name exactly one system GPU ID, not a list. "
-        "Example: export DROUGHTAPP_GPU_DEVICE=0"
-    )
+GPU_REQUIRED_ENV_VAR = "DROUGHTAPP_REQUIRE_GPU"
+
+
+def _first_csv_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    return parts[0] if parts else None
+
+
+def _env_flag_enabled(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+_requested_gpu = _first_csv_value(os.environ.get(GPU_ENV_VAR))
+_visible_gpu = _first_csv_value(os.environ.get("CUDA_VISIBLE_DEVICES"))
+GPU_REQUIRED = _env_flag_enabled(GPU_REQUIRED_ENV_VAR)
+
+if _requested_gpu is not None:
+    GPU_DEVICE_ID = _requested_gpu
+    GPU_CONFIG_SOURCE = GPU_ENV_VAR
+elif _visible_gpu is not None:
+    GPU_DEVICE_ID = _visible_gpu
+    GPU_CONFIG_SOURCE = "CUDA_VISIBLE_DEVICES"
+else:
+    GPU_DEVICE_ID = None
+    GPU_CONFIG_SOURCE = "auto"
 
 # TensorFlow reads CUDA_VISIBLE_DEVICES during import. Keep this assignment in
 # config.py and import config before any TensorFlow import site.
-os.environ["CUDA_VISIBLE_DEVICES"] = GPU_DEVICE_ID
+if GPU_DEVICE_ID is not None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = GPU_DEVICE_ID
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("TF_GPU_ALLOCATOR", "cuda_malloc_async")
 
 
 @dataclass(frozen=True)
